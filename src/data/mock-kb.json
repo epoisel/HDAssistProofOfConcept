@@ -1,0 +1,186 @@
+{
+  "mockKnowledgeBase": [
+    {
+      "sys_id": "KB001001",
+      "number": "KB0001001",
+      "short_description": "Epic EMR Login Issues - Password Reset and Account Lockout",
+      "text": "# Epic EMR Login Issues - Password Reset and Account Lockout\n\n## Overview\nThis article covers common Epic EMR login issues including password resets, account lockouts, and authentication failures.\n\n## Symptoms\n- User unable to log into Epic\n- \"Invalid credentials\" error message\n- Account lockout notifications\n- Password expired warnings\n\n## Root Causes\n1. **Password Expiration**: Healthcare passwords expire every 90 days\n2. **Account Lockout**: Too many failed login attempts (5 attempts)\n3. **AD Sync Issues**: Epic-AD synchronization delays\n4. **MFA Problems**: Multi-factor authentication failures\n\n## Resolution Steps\n\n### For Help Desk Agents (L1)\n\n1. **Verify User Identity**\n   ```\n   - Confirm full name and employee ID\n   - Verify department and direct manager\n   - Check badge photo if available\n   - Confirm last 4 digits of SSN\n   ```\n\n2. **Check Account Status**\n   ```powershell\n   # Check AD account status\n   Get-ADUser -Identity \"username\" -Properties LockedOut,PasswordExpired,LastLogonDate\n   ```\n\n3. **Password Reset Process**\n   - Open Active Directory Users and Computers\n   - Navigate to OU=Healthcare,OU=Users,DC=hospital,DC=org\n   - Right-click user account → Reset Password\n   - Generate secure password: [Capital][4digits][Special][lowercase][2digits]\n   - Check \"User must change password at next logon\"\n   - Unlock account if necessary\n\n4. **Epic-Specific Steps**\n   - Access Epic UserWeb (https://epic.hospital.org/UserWeb)\n   - Navigate to User Management → Force Password Sync\n   - Wait 5 minutes for synchronization\n   - Test login with temporary password\n\n### For Senior Technicians (L2)\n\n5. **Advanced Troubleshooting**\n   ```sql\n   -- Check Epic user status\n   SELECT USER_ID, USER_NAME, LAST_LOGIN, ACTIVE_STATUS, DEPARTMENT_C\n   FROM CLARITY_EMP \n   WHERE USER_ID = 'username'\n   ```\n\n6. **MFA Reset**\n   - Access Azure AD admin center\n   - Navigate to Users → Authentication Methods\n   - Reset MFA for user\n   - Instruct user to re-register MFA\n\n## Security Considerations\n- All password resets must be logged in audit system\n- Verify identity before any password reset\n- Report suspicious password reset requests to Security\n- Patient data access requires additional verification\n\n## Prevention\n- Enable password expiration notifications (14 days)\n- Implement self-service password reset\n- Regular AD-Epic sync monitoring\n- User education on password policies\n\n## Related Articles\n- KB0001002: Epic EMR - Multi-Factor Authentication Setup\n- KB0001003: Active Directory - Password Policy Management\n- KB0001004: Epic EMR - User Account Provisioning",
+      "category": "Epic EMR",
+      "workflow_state": "published",
+      "sys_created_on": "2024-01-15 10:00:00",
+      "sys_updated_on": "2024-01-20 14:30:00",
+      "sys_view_count": 1847,
+      "data_classification": "internal",
+      "compliance_tags": ["HIPAA", "SOC2"],
+      "keywords": ["epic", "emr", "password", "reset", "login", "authentication", "lockout"],
+      "department": "IT Support",
+      "severity": "high",
+      "resolution_time": "15 minutes"
+    },
+    {
+      "sys_id": "KB001002",
+      "number": "KB0001002",
+      "short_description": "PACS Imaging Workstation - Connectivity and Performance Issues",
+      "text": "# PACS Imaging Workstation - Connectivity and Performance Issues\n\n## Overview\nTroubleshooting guide for PACS (Picture Archiving and Communication System) imaging workstations including connectivity issues, slow performance, and image loading problems.\n\n## Common Issues\n\n### Cannot Connect to PACS Server\n**Symptoms:**\n- \"Cannot connect to server\" error\n- PACS client fails to start\n- Network timeouts\n\n**Resolution:**\n1. **Network Connectivity Test**\n   ```powershell\n   # Test PACS server connectivity\n   Test-NetConnection pacs.hospital.org -Port 104\n   Test-NetConnection pacs.hospital.org -Port 4242\n   \n   # Check DNS resolution\n   nslookup pacs.hospital.org\n   ```\n\n2. **Firewall Configuration**\n   - Ensure DICOM ports are open (104, 4242, 11112)\n   - Check Windows Firewall exceptions\n   - Verify network segmentation rules\n\n3. **Service Status**\n   ```powershell\n   # Check PACS services\n   Get-Service -Name \"PACS*\" | Format-Table Name, Status, StartType\n   \n   # Restart if needed\n   Restart-Service -Name \"PACSClient\" -Force\n   ```\n\n### Images Not Loading or Slow Performance\n**Symptoms:**\n- Images take >30 seconds to load\n- Blank image viewers\n- Partial image rendering\n\n**Resolution:**\n1. **Clear Image Cache**\n   ```powershell\n   # Stop PACS client\n   Stop-Service -Name \"PACSClient\"\n   \n   # Clear cache directories\n   Remove-Item \"C:\\PACS\\Cache\\*\" -Recurse -Force\n   Remove-Item \"C:\\PACS\\Temp\\*\" -Recurse -Force\n   \n   # Restart service\n   Start-Service -Name \"PACSClient\"\n   ```\n\n2. **Check Disk Space**\n   - Ensure C: drive has >10GB free space\n   - Monitor cache directory size\n   - Configure automatic cache cleanup\n\n3. **Network Optimization**\n   - Check bandwidth utilization\n   - Verify QoS settings for PACS traffic\n   - Monitor network latency to PACS server\n\n## Radiology-Specific Issues\n\n### DICOM Viewer Problems\n```powershell\n# Check DICOM service status\nGet-Service -Name \"DICOM*\" | Format-Table\n\n# Restart DICOM services\nRestart-Service -Name \"DICOMImageService\"\nRestart-Service -Name \"DICOMPrintService\"\n```\n\n### Study Routing Issues\n- Verify modality worklist configuration\n- Check study routing rules\n- Validate DICOM tags and metadata\n\n## Performance Monitoring\n\n### Key Metrics to Monitor\n- Image load time: <5 seconds target\n- Server response time: <2 seconds\n- Cache hit ratio: >80%\n- Network utilization: <70%\n\n### Monitoring Commands\n```powershell\n# Monitor PACS performance\nGet-Counter \"\\Process(PACSClient)\\% Processor Time\"\nGet-Counter \"\\Process(PACSClient)\\Working Set\"\n\n# Check network performance\nGet-Counter \"\\Network Interface(*)\\Bytes Total/sec\"\n```\n\n## Escalation Criteria\n**Escalate to Radiology IT if:**\n- Multiple workstations affected\n- Server-side issues identified\n- Database connectivity problems\n- Image corruption or data integrity issues\n\n## Prevention\n- Schedule regular cache cleanup\n- Monitor disk space alerts\n- Implement proactive network monitoring\n- Regular PACS client updates\n\n## Compliance Notes\n- All PACS access is logged for HIPAA audit\n- Image access requires valid clinical reason\n- Report any unauthorized access attempts\n- Patient data must not be cached locally\n\n## Related Articles\n- KB0001005: PACS - Modality Worklist Configuration\n- KB0001006: DICOM - Network Troubleshooting\n- KB0001007: Radiology - Image Quality Issues",
+      "category": "PACS",
+      "workflow_state": "published",
+      "sys_created_on": "2024-01-10 14:30:00",
+      "sys_updated_on": "2024-01-18 09:15:00",
+      "sys_view_count": 1203,
+      "data_classification": "internal",
+      "compliance_tags": ["HIPAA", "FDA"],
+      "keywords": ["pacs", "imaging", "radiology", "dicom", "workstation", "connectivity"],
+      "department": "Radiology IT",
+      "severity": "medium",
+      "resolution_time": "30 minutes"
+    },
+    {
+      "sys_id": "KB001003",
+      "number": "KB0001003",
+      "short_description": "Nursing Station Technology - Printers, Scanners, and Bedside Computers",
+      "text": "# Nursing Station Technology - Printers, Scanners, and Bedside Computers\n\n## Overview\nComprehensive guide for nursing station technology support including label printers, barcode scanners, medication dispensing systems, and bedside computers.\n\n## Printer Issues\n\n### Medication Label Printer Problems\n**Common Issues:**\n- Labels not printing\n- Misaligned labels\n- Barcode quality issues\n- Printer offline\n\n**Resolution Steps:**\n1. **Check Printer Status**\n   ```powershell\n   # Check printer queue\n   Get-WmiObject -Class Win32_Printer | Where-Object {$_.Name -like \"*Label*\"}\n   \n   # Clear print queue\n   Get-WmiObject -Class Win32_PrintJob | Remove-WmiObject\n   ```\n\n2. **Label Alignment**\n   - Open printer properties\n   - Run label alignment utility\n   - Test with sample medication label\n   - Verify barcode scanning after print\n\n3. **Epic Integration**\n   - Check Epic print settings\n   - Verify medication administration record (MAR) configuration\n   - Test barcode medication administration (BCMA) workflow\n\n### Patient Wristband Printer\n**Setup Process:**\n1. Install wristband printer driver\n2. Configure label size (1\" x 11\")\n3. Set up patient safety settings\n4. Test barcode scanning\n5. Verify patient identification workflow\n\n## Barcode Scanner Issues\n\n### Scanner Not Reading Barcodes\n**Troubleshooting:**\n1. **Clean Scanner Lens**\n   - Use alcohol wipe on scanner window\n   - Check for scratches or damage\n   - Test with known good barcode\n\n2. **Configuration Check**\n   ```\n   Scanner Settings:\n   - Code 128: Enabled\n   - Code 39: Enabled\n   - PDF417: Enabled\n   - Data Matrix: Enabled\n   - Beep on scan: Enabled\n   ```\n\n3. **Epic Integration**\n   - Verify scanner wedge configuration\n   - Test medication scanning workflow\n   - Check patient identification scanning\n\n## Bedside Computer Issues\n\n### Computers on Wheels (COWs) Problems\n**Common Issues:**\n- Battery not charging\n- Wireless connectivity issues\n- Slow performance\n- Login problems\n\n**Resolution:**\n1. **Battery Issues**\n   - Check charging cable connection\n   - Verify power supply LED indicators\n   - Test battery health in BIOS\n   - Replace battery if <2 hours runtime\n\n2. **Wireless Connectivity**\n   ```powershell\n   # Check wireless adapter\n   Get-NetAdapter -Name \"Wi-Fi\" | Format-Table\n   \n   # Test connectivity\n   Test-NetConnection hospital-wifi.org\n   \n   # Reconnect to network\n   netsh wlan connect name=\"HospitalWiFi\"\n   ```\n\n3. **Performance Optimization**\n   - Clear browser cache\n   - Check disk space (need >5GB free)\n   - Restart computer if uptime >7 days\n   - Run disk cleanup utility\n\n## Medication Dispensing Systems\n\n### Automated Dispensing Cabinet (ADC) Issues\n**Common Problems:**\n- Cannot connect to Epic\n- Drawer won't open\n- Barcode scanner not working\n- Biometric reader failure\n\n**Resolution:**\n1. **Epic Connectivity**\n   - Check network connection\n   - Verify Epic interface status\n   - Restart ADC workstation\n   - Test with known user account\n\n2. **Hardware Issues**\n   - Check power connections\n   - Test drawer mechanisms\n   - Clean biometric reader\n   - Verify barcode scanner function\n\n## Nursing Unit Specific Configurations\n\n### ICU Special Requirements\n- Wireless keyboards for infection control\n- Sealed computers for easy cleaning\n- Redundant network connections\n- Emergency power backup\n\n### Emergency Department\n- Mobile charging stations\n- Ruggedized equipment\n- Fast boot times required\n- Multiple user quick-switch capability\n\n### Pediatric Unit\n- Child-safe equipment placement\n- Specialized pediatric dosing alerts\n- Parent communication tools\n- Toy-friendly cleaning protocols\n\n## Security and Compliance\n\n### HIPAA Requirements\n- Automatic screen locks after 5 minutes\n- Secure print release for patient data\n- Audit all medication administration\n- Encrypted communication channels\n\n### Patient Safety\n- Barcode verification required\n- Medication five rights checking\n- Allergy alerts integration\n- Incident reporting system\n\n## Monitoring and Alerts\n\n### Key Metrics\n- Printer uptime: >99%\n- Scanner accuracy: >99.5%\n- COW battery life: >4 hours\n- Network connectivity: >99%\n\n### Automated Alerts\n- Low paper in label printers\n- Scanner read errors\n- COW battery below 20%\n- Network connectivity issues\n\n## Escalation Procedures\n\n**Contact Nursing IT if:**\n- Multiple units affected\n- Medication safety concerns\n- Epic integration issues\n- Biometric system failures\n\n**Contact Biomedical Engineering if:**\n- Hardware failures\n- Safety concerns\n- Warranty issues\n- Regulatory compliance\n\n## Related Articles\n- KB0001008: Epic - Medication Administration Record (MAR)\n- KB0001009: Barcode Medication Administration (BCMA)\n- KB0001010: Nursing Unit - Wireless Network Optimization",
+      "category": "Nursing Technology",
+      "workflow_state": "published",
+      "sys_created_on": "2024-01-08 11:20:00",
+      "sys_updated_on": "2024-01-19 16:45:00",
+      "sys_view_count": 934,
+      "data_classification": "internal",
+      "compliance_tags": ["HIPAA", "Patient Safety"],
+      "keywords": ["nursing", "printer", "scanner", "bedside", "medication", "barcode"],
+      "department": "Nursing IT",
+      "severity": "medium",
+      "resolution_time": "20 minutes"
+    },
+    {
+      "sys_id": "KB001004",
+      "number": "KB0001004",
+      "short_description": "VPN Access for Remote Healthcare Workers",
+      "text": "# VPN Access for Remote Healthcare Workers\n\n## Overview\nGuide for setting up and troubleshooting VPN access for healthcare workers including physicians, nurses, and administrative staff working remotely.\n\n## VPN Client Installation\n\n### Cisco AnyConnect Setup\n1. **Download Client**\n   - Access: https://vpn.hospital.org\n   - Login with AD credentials\n   - Download appropriate client version\n\n2. **Installation Process**\n   ```powershell\n   # Run installer as administrator\n   Start-Process -FilePath \"anyconnect-win-installer.exe\" -Verb RunAs\n   \n   # Verify installation\n   Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Where-Object {$_.DisplayName -like \"*AnyConnect*\"}\n   ```\n\n3. **Configuration**\n   - Server Address: vpn.hospital.org\n   - Enable automatic reconnection\n   - Configure split tunneling for healthcare apps\n\n## Authentication Methods\n\n### Multi-Factor Authentication\n**Required for all healthcare VPN access:**\n1. Active Directory username/password\n2. RSA SecurID token OR\n3. Microsoft Authenticator push notification\n4. SMS backup (emergency only)\n\n### Token Synchronization\n```\nIf RSA token is out of sync:\n1. Wait for two consecutive token codes\n2. Enter: PIN + FirstCode + SecondCode\n3. System will automatically resynchronize\n```\n\n## Troubleshooting Common Issues\n\n### Cannot Connect to VPN\n**Symptoms:**\n- Connection timeout\n- Authentication failures\n- \"Network is unreachable\" errors\n\n**Resolution:**\n1. **Check Internet Connectivity**\n   ```powershell\n   # Test internet connection\n   Test-NetConnection google.com -Port 443\n   \n   # Test VPN server connectivity\n   Test-NetConnection vpn.hospital.org -Port 443\n   ```\n\n2. **Firewall Configuration**\n   - Allow AnyConnect through Windows Firewall\n   - Open ports: 443 (HTTPS), 4433 (DTLS)\n   - Disable third-party firewalls temporarily\n\n3. **DNS Issues**\n   ```powershell\n   # Flush DNS cache\n   ipconfig /flushdns\n   \n   # Use hospital DNS servers\n   netsh interface ip set dns \"Local Area Connection\" static 10.1.1.10\n   ```\n\n### Slow VPN Performance\n**Optimization Steps:**\n1. **Check Available Bandwidth**\n   ```powershell\n   # Test bandwidth\n   Test-NetConnection speedtest.net -Port 80\n   ```\n\n2. **Optimize Connection**\n   - Use wired connection when possible\n   - Close unnecessary applications\n   - Disable automatic updates during work hours\n   - Use hospital-optimized DNS servers\n\n3. **Application-Specific Optimization**\n   - Epic: Use Citrix when available\n   - PACS: Enable image compression\n   - Email: Use OWA instead of Outlook\n\n## Healthcare Application Access\n\n### Epic EMR Remote Access\n**Requirements:**\n- VPN connection established\n- Epic Hyperspace client installed\n- Valid Epic user credentials\n- Appropriate clinical privileges\n\n**Connection Process:**\n1. Connect to VPN\n2. Launch Epic Hyperspace\n3. Server: epic.hospital.org\n4. Login with AD credentials\n5. Complete MFA if prompted\n\n### PACS Remote Access\n**For Radiologists and Clinicians:**\n1. VPN connection required\n2. Use web-based PACS viewer\n3. URL: https://pacs.hospital.org/viewer\n4. Download reading station for primary interpretation\n\n### Telemedicine Platform Access\n**Video Conferencing Setup:**\n1. VPN not required for patient calls\n2. Use hospital-approved platforms only\n3. Verify HIPAA compliance\n4. Test audio/video before patient encounters\n\n## Security Requirements\n\n### Device Compliance\n**All remote devices must have:**\n- Current antivirus software\n- Automatic Windows updates enabled\n- Encrypted hard drive (BitLocker)\n- Screen lock after 5 minutes\n- No personal use during work hours\n\n### Data Protection\n**Prohibited Activities:**\n- Saving patient data locally\n- Using personal cloud storage\n- Accessing non-hospital systems while connected\n- Sharing VPN credentials\n\n### Incident Reporting\n**Report immediately if:**\n- Device is lost or stolen\n- Suspected malware infection\n- Unauthorized access attempts\n- Data breach or potential exposure\n\n## Mobile Device Support\n\n### iOS Configuration\n1. Install AnyConnect from App Store\n2. Configure server: vpn.hospital.org\n3. Enable per-app VPN for hospital apps\n4. Configure automatic connection\n\n### Android Configuration\n1. Install AnyConnect from Play Store\n2. Import configuration profile\n3. Enable always-on VPN\n4. Configure work profile separation\n\n## Monitoring and Compliance\n\n### Session Monitoring\n- All VPN sessions are logged\n- Maximum session time: 8 hours\n- Automatic disconnect after 30 minutes idle\n- Concurrent session limits apply\n\n### Compliance Reporting\n- Monthly access reports generated\n- Unusual activity alerts\n- Failed authentication tracking\n- Device compliance monitoring\n\n## Troubleshooting Tools\n\n### AnyConnect Diagnostics\n```powershell\n# Collect diagnostic information\ncd \"C:\\Program Files (x86)\\Cisco\\Cisco AnyConnect Secure Mobility Client\"\n.\\vpnagentd.exe -diagnose\n\n# View connection logs\nGet-Content \"$env:LOCALAPPDATA\\Cisco\\Cisco AnyConnect Secure Mobility Client\\Logs\\vpnagent.log\"\n```\n\n### Network Diagnostics\n```powershell\n# Test VPN tunnel\nTest-NetConnection 10.1.1.1 -Port 443\n\n# Check routing table\nroute print\n\n# Verify DNS resolution\nnslookup epic.hospital.org\n```\n\n## Escalation Procedures\n\n**Contact Network Team if:**\n- VPN server issues\n- Authentication server problems\n- Multiple users affected\n- Performance issues\n\n**Contact Security Team if:**\n- Suspected security breach\n- Compliance violations\n- Unauthorized access attempts\n- Device compromise\n\n## Related Articles\n- KB0001011: Remote Desktop Services for Healthcare\n- KB0001012: Mobile Device Management (MDM)\n- KB0001013: Telemedicine Platform Support",
+      "category": "Network Security",
+      "workflow_state": "published",
+      "sys_created_on": "2024-01-12 09:30:00",
+      "sys_updated_on": "2024-01-21 11:15:00",
+      "sys_view_count": 756,
+      "data_classification": "internal",
+      "compliance_tags": ["HIPAA", "SOC2", "Remote Access"],
+      "keywords": ["vpn", "remote", "access", "cisco", "anyconnect", "healthcare"],
+      "department": "Network Security",
+      "severity": "medium",
+      "resolution_time": "25 minutes"
+    },
+    {
+      "sys_id": "KB001005",
+      "number": "KB0001005",
+      "short_description": "Hospital WiFi Network - Patient and Staff Access",
+      "text": "# Hospital WiFi Network - Patient and Staff Access\n\n## Overview\nGuide for managing hospital WiFi networks including staff secure access, patient guest network, and medical device connectivity.\n\n## Network Architecture\n\n### WiFi Networks Available\n1. **HospitalStaff** (WPA2-Enterprise)\n   - Staff and physician access\n   - AD authentication required\n   - Full network access\n   - Medical device connectivity\n\n2. **HospitalGuest** (Captive Portal)\n   - Patient and visitor access\n   - Web-based authentication\n   - Internet access only\n   - No internal network access\n\n3. **MedicalDevices** (WPA2-PSK)\n   - Medical equipment only\n   - Pre-shared key authentication\n   - VLAN segregation\n   - Limited network access\n\n4. **IoT-Healthcare** (802.1X)\n   - IoT and smart devices\n   - Certificate-based authentication\n   - Monitored network access\n   - Device-specific policies\n\n## Staff WiFi Connection\n\n### Windows Configuration\n1. **Network Selection**\n   - Select \"HospitalStaff\" network\n   - Security type: WPA2-Enterprise\n   - EAP method: PEAP\n   - Authentication: MS-CHAP v2\n\n2. **Credentials**\n   - Username: AD username (without domain)\n   - Password: AD password\n   - Domain: HOSPITAL\n\n3. **Certificate Installation**\n   ```powershell\n   # Import hospital root certificate\n   certlm.msc\n   # Navigate to Trusted Root Certification Authorities\n   # Import HospitalRootCA.crt\n   ```\n\n### Mobile Device Configuration\n\n#### iOS Setup\n1. Settings → WiFi → HospitalStaff\n2. Username: AD username\n3. Password: AD password\n4. Trust certificate when prompted\n5. Verify \"Settings → General → About → Certificate Trust Settings\"\n\n#### Android Setup\n1. Settings → WiFi → HospitalStaff\n2. EAP method: PEAP\n3. Phase 2 authentication: MSCHAPV2\n4. Identity: AD username\n5. Password: AD password\n6. Domain: HOSPITAL\n\n## Patient Guest Network\n\n### Guest Access Process\n1. **Network Selection**\n   - Connect to \"HospitalGuest\"\n   - Browser automatically opens\n   - Terms of service acceptance\n   - Contact information (optional)\n\n2. **Access Limitations**\n   - 4-hour session limit\n   - Bandwidth throttling (5 Mbps)\n   - No P2P or streaming services\n   - Content filtering enabled\n\n3. **Troubleshooting Guest Access**\n   ```\n   Common Issues:\n   - Browser doesn't open → Clear cache, try different browser\n   - Can't accept terms → Disable popup blocker\n   - Connection drops → Reconnect after 4 hours\n   ```\n\n## Medical Device Connectivity\n\n### Device Onboarding Process\n1. **Device Registration**\n   - MAC address collection\n   - Device type identification\n   - Manufacturer and model\n   - Clinical area assignment\n\n2. **Network Configuration**\n   - VLAN assignment based on device type\n   - Firewall rules configuration\n   - Quality of Service (QoS) settings\n   - Monitoring and alerting setup\n\n3. **Security Requirements**\n   - Regular security assessments\n   - Firmware update management\n   - Network segmentation\n   - Access control lists\n\n### Common Medical Device Types\n\n#### Infusion Pumps\n- Network: MedicalDevices\n- VLAN: 100 (Infusion Systems)\n- Ports: 80, 443, 8080\n- Monitoring: Critical\n\n#### Patient Monitors\n- Network: MedicalDevices\n- VLAN: 101 (Patient Monitoring)\n- Ports: 443, 8443, 9443\n- Monitoring: Critical\n\n#### Imaging Equipment\n- Network: MedicalDevices\n- VLAN: 102 (Imaging)\n- Ports: 104, 4242, 11112\n- Monitoring: High\n\n## Troubleshooting WiFi Issues\n\n### Connection Problems\n\n#### Cannot Connect to Staff Network\n**Symptoms:**\n- Authentication failures\n- \"Cannot connect to network\" errors\n- Repeated password prompts\n\n**Resolution:**\n1. **Verify Credentials**\n   ```powershell\n   # Test AD authentication\n   runas /user:HOSPITAL\\username cmd\n   ```\n\n2. **Certificate Issues**\n   - Verify hospital root certificate installed\n   - Check certificate expiration\n   - Clear saved network credentials\n\n3. **Network Profile Reset**\n   ```powershell\n   # Remove saved network profile\n   netsh wlan delete profile name=\"HospitalStaff\"\n   \n   # Reconnect with fresh credentials\n   ```\n\n#### Slow or Intermittent Connectivity\n**Diagnostics:**\n```powershell\n# Check signal strength\nnetsh wlan show profiles\nnetsh wlan show profile name=\"HospitalStaff\" key=clear\n\n# Test bandwidth\nTest-NetConnection speedtest.net -Port 80\n\n# Check for interference\nnetsh wlan show profile name=\"HospitalStaff\" key=clear\n```\n\n### Performance Optimization\n\n#### WiFi Channel Management\n- 2.4GHz: Channels 1, 6, 11 (non-overlapping)\n- 5GHz: 20MHz channels for high density\n- DFS channels for additional capacity\n- Regular spectrum analysis\n\n#### Load Balancing\n- Band steering (2.4GHz → 5GHz)\n- Access point load balancing\n- Client device limits per AP\n- QoS prioritization\n\n## Security Monitoring\n\n### WiFi Security Measures\n1. **Intrusion Detection**\n   - Rogue access point detection\n   - Unauthorized device monitoring\n   - Evil twin detection\n   - Deauthentication attack monitoring\n\n2. **Access Control**\n   - 802.1X authentication\n   - MAC address filtering (medical devices)\n   - Certificate-based authentication\n   - Role-based access control\n\n3. **Monitoring Tools**\n   ```powershell\n   # Check connected devices\n   Get-NetAdapter -Name \"Wi-Fi\" | Get-NetAdapterStatistics\n   \n   # View connection details\n   netsh wlan show connections\n   ```\n\n### Compliance Requirements\n\n#### HIPAA WiFi Security\n- WPA2 minimum encryption\n- No open networks for patient data\n- Guest network isolation\n- Audit logging enabled\n- Regular security assessments\n\n#### FDA Medical Device Requirements\n- Device-specific network segmentation\n- Cybersecurity risk assessments\n- Vulnerability monitoring\n- Incident response procedures\n\n## Network Monitoring\n\n### Key Performance Indicators\n- Channel utilization: <70%\n- Signal strength: >-70 dBm\n- Connection success rate: >95%\n- Roaming time: <150ms\n- Throughput: >10 Mbps per user\n\n### Automated Monitoring\n```powershell\n# WiFi monitoring script\n$wifiStats = netsh wlan show interfaces\n$signalStrength = ($wifiStats | Select-String \"Signal\").ToString().Split(':')[1].Trim()\n\nif ($signalStrength -match \"(\\d+)%\" -and [int]$matches[1] -lt 70) {\n    Write-Warning \"Low WiFi signal: $signalStrength\"\n}\n```\n\n## Escalation Procedures\n\n### Network Team Escalation\n**Contact for:**\n- Multiple access points down\n- Authentication server issues\n- Network performance problems\n- Security incidents\n\n### Biomedical Engineering\n**Contact for:**\n- Medical device connectivity\n- Clinical workflow impact\n- Patient safety concerns\n- Regulatory compliance\n\n## Related Articles\n- KB0001014: Access Point Management and Troubleshooting\n- KB0001015: Medical Device Network Security\n- KB0001016: WiFi Site Survey and Planning",
+      "category": "Network Infrastructure",
+      "workflow_state": "published",
+      "sys_created_on": "2024-01-14 13:45:00",
+      "sys_updated_on": "2024-01-22 08:20:00",
+      "sys_view_count": 567,
+      "data_classification": "internal",
+      "compliance_tags": ["HIPAA", "FDA", "Network Security"],
+      "keywords": ["wifi", "wireless", "network", "staff", "patient", "guest", "medical device"],
+      "department": "Network Infrastructure",
+      "severity": "medium",
+      "resolution_time": "20 minutes"
+    }
+  ],
+  "categories": [
+    {
+      "sys_id": "CAT001",
+      "label": "Epic EMR",
+      "parent": null,
+      "description": "Epic Electronic Medical Records system support and troubleshooting",
+      "article_count": 15
+    },
+    {
+      "sys_id": "CAT002",
+      "label": "PACS",
+      "parent": null,
+      "description": "Picture Archiving and Communication System support",
+      "article_count": 8
+    },
+    {
+      "sys_id": "CAT003",
+      "label": "Nursing Technology",
+      "parent": null,
+      "description": "Nursing station and bedside technology support",
+      "article_count": 12
+    },
+    {
+      "sys_id": "CAT004",
+      "label": "Network Security",
+      "parent": null,
+      "description": "VPN, firewall, and network security support",
+      "article_count": 6
+    },
+    {
+      "sys_id": "CAT005",
+      "label": "Network Infrastructure",
+      "parent": null,
+      "description": "WiFi, switching, and network infrastructure support",
+      "article_count": 10
+    },
+    {
+      "sys_id": "CAT006",
+      "label": "Medical Devices",
+      "parent": null,
+      "description": "Medical device connectivity and integration",
+      "article_count": 20
+    },
+    {
+      "sys_id": "CAT007",
+      "label": "Telemedicine",
+      "parent": null,
+      "description": "Video conferencing and remote care technology",
+      "article_count": 5
+    },
+    {
+      "sys_id": "CAT008",
+      "label": "Security & Compliance",
+      "parent": null,
+      "description": "HIPAA, security policies, and compliance procedures",
+      "article_count": 18
+    }
+  ],
+  "users": [
+    {
+      "username": "helpdesk.agent@hospital.org",
+      "display_name": "Help Desk Agent",
+      "groups": ["Healthcare_IT_L1"],
+      "department": "IT Support",
+      "data_access": ["public", "internal"]
+    },
+    {
+      "username": "senior.tech@hospital.org",
+      "display_name": "Senior IT Tech",
+      "groups": ["Healthcare_IT_L2"],
+      "department": "IT Support",
+      "data_access": ["public", "internal", "confidential"]
+    },
+    {
+      "username": "it.admin@hospital.org",
+      "display_name": "IT Administrator",
+      "groups": ["Healthcare_IT_Admin"],
+      "department": "IT Administration",
+      "data_access": ["public", "internal", "confidential", "restricted"]
+    },
+    {
+      "username": "security.admin@hospital.org",
+      "display_name": "Security Administrator",
+      "groups": ["Healthcare_Security"],
+      "department": "Information Security",
+      "data_access": ["public", "internal", "confidential", "restricted"]
+    }
+  ],
+  "metadata": {
+    "total_articles": 5,
+    "total_categories": 8,
+    "last_updated": "2024-01-22T08:20:00Z",
+    "compliance_frameworks": ["HIPAA", "SOC2", "FDA"],
+    "data_classifications": ["public", "internal", "confidential", "restricted"],
+    "mock_mode": true,
+    "version": "1.0.0"
+  }
+} 
