@@ -291,4 +291,47 @@ $RECYCLE.BIN/
 *.msp
 
 # Windows shortcuts
-*.lnk 
+*.lnk
+
+# MCPCopilot specific files to hide
+# Configuration files with sensitive data
+config/azure-ad.json
+config/*.json
+!config/example-*.json
+
+# Test files and HTTP requests
+test-mcp.http
+*.http
+*.rest
+
+# Windows batch files (environment-specific)
+start-server.bat
+*.bat
+*.cmd
+
+# Local development files
+.env.local
+.env.development
+.env.production
+
+# Session and cache files
+sessions/
+cache/
+*.session
+
+# Private notes and documentation
+PRIVATE.md
+private-notes.txt
+TODO-private.md
+
+# Backup and temporary files
+*.backup
+*.bak
+*.tmp
+*.temp
+
+# IDE-specific files
+.vscode/settings.json
+.vscode/launch.json
+.idea/workspace.xml
+.idea/tasks.xml 
